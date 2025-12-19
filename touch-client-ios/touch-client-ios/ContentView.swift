@@ -38,7 +38,7 @@ struct ContentView: View {
                 
                 // 取消区域 - 紧贴右侧边缘
                 CancelZoneView()
-                    .position(x: screenWidth - 60, y: 70)
+                    .position(x: screenWidth - 50, y: 50)
                 
                 // 顶部工具栏
                 topBar(screenWidth: screenWidth)

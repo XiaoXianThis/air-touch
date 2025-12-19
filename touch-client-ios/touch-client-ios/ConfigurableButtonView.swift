@@ -37,9 +37,14 @@ struct DraggableButtonView: View {
                         label: button.label,
                         isDirectional: button.isDirectional
                     )
-                    SkillButton(config: config) { result in
-                        handleSkillRelease(button: button, result: result)
-                    }
+                    SkillButton(
+                        config: config,
+                        onSkillEvent: { event in
+                            handleSkillEvent(button: button, event: event)
+                        },
+                        smoothEnabled: configManager.smoothMouseEnabled,
+                        smoothFactor: configManager.smoothMouseFactor
+                    )
                 }
             }
             .position(position)
@@ -113,14 +118,58 @@ struct DraggableButtonView: View {
         )
     }
     
-    private func handleSkillRelease(button: ButtonItem, result: SkillReleaseResult) {
-        switch result {
-        case .tap:
-            print("Button \(button.label): tap release")
-        case .directional(let angle):
-            print("Button \(button.label): directional release at angle \(angle)")
+    private func handleSkillEvent(button: ButtonItem, event: SkillEvent) {
+        // 优先使用新的 keyBindingConfig，兼容旧的 keyBinding
+        guard let keyConfig = button.effectiveKeyConfig else {
+            // 如果没有配置，使用 label 作为按键
+            let fallbackKey = button.label
+            guard !fallbackKey.isEmpty else { return }
+            handleSkillEventWithKey(key: fallbackKey, modifiers: nil, event: event)
+            return
+        }
+        
+        let key = keyConfig.effectiveKey
+        guard !key.isEmpty else { return }
+        let modifiers = keyConfig.modifiers.isEmpty ? nil : keyConfig.modifiers
+        
+        handleSkillEventWithKey(key: key, modifiers: modifiers, event: event)
+    }
+    
+    private func handleSkillEventWithKey(key: String, modifiers: ModifierKeys?, event: SkillEvent) {
+        switch event {
+        case .started:
+            // 技能开始：按下技能键，鼠标移到屏幕中心（含偏移）
+            NetworkManager.shared.sendSkillStart(
+                key: key,
+                offsetX: configManager.originOffsetX,
+                offsetY: configManager.originOffsetY,
+                modifiers: modifiers
+            )
+            
+        case .dragging(let dx, let dy, let distance):
+            // 拖动中：实时更新鼠标位置
+            NetworkManager.shared.sendSkillDrag(
+                key: key,
+                dx: Float(dx),
+                dy: Float(dy),
+                distance: Float(distance),
+                smooth: configManager.smoothMouseEnabled
+            )
+            
+        case .released(let dx, let dy):
+            // 释放：点击鼠标左键确认，鼠标回到中心
+            NetworkManager.shared.sendSkillRelease(key: key, dx: Float(dx), dy: Float(dy))
+            
         case .cancelled:
-            print("Button \(button.label): cancelled")
+            // 取消：鼠标回到中心，不点击
+            NetworkManager.shared.sendSkillCancel(key: key)
+            
+        case .tap:
+            // 点击（非指向性技能）：发送按键（带修饰键）
+            NetworkManager.shared.sendButton(key: key, pressed: true, modifiers: modifiers)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                NetworkManager.shared.sendButton(key: key, pressed: false, modifiers: modifiers)
+            }
         }
     }
 }

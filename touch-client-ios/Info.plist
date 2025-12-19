@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>NSLocalNetworkUsageDescription</key>
+    <string>此应用需要访问本地网络来发现和连接 Touch Server 服务端</string>
+    <key>NSBonjourServices</key>
+    <array>
+        <string>_touchserver._udp.</string>
+    </array>
+</dict>
+</plist>
